@@ -1,0 +1,84 @@
+<html>
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Index</title>
+    <link rel="stylesheet" type="text/css" href="css/l_zoom.css"/>
+    <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+    <script src="js/echarts.min.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/div.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/l_zoom.min.js"></script>
+    <style type="text/css">
+        body, html {
+            overflow: hidden;
+            margin: 0;
+        }
+
+        body {
+            padding: 20px;
+        }
+
+        .content {
+            position: relative;
+        }
+
+        .drag {
+            padding: 10px;
+            border: 1px solid #aeeeee;
+            width: 400px;
+            height: 300px;
+            cursor: move;
+            position: absolute;
+            left: 0;
+            top: 0;
+
+        }
+
+        .result {
+            background-color: #afffff;
+            height: 30px;
+            position: relative;
+
+        }
+    </style>
+</head>
+<body>
+<div class="content">
+    <div class="drag" id="drag1" style="left: 50px;">
+<!--        <div class="result" id="result1"></div>-->
+        <div id="echart1" style="height: 100%;"></div>
+    </div>
+    <div class="drag" id="drag2" style="left: 500px;">
+<!--        <div class="result" id="result2"></div>-->
+        <div id="echart2" style="height: 100%;"></div>
+    </div>
+    <div class="drag" id="drag3" style="left: 950px;">
+<!--        <div class="result" id="result3"></div>-->
+        <div id="echart3" style="height: 100%;"></div>
+    </div>
+</div>
+<div>
+    <input type="button" name="echartSave" value="保存效果" onclick="saveCharts()"/>
+</div>
+<div >
+    <div>
+        <input type="button" name="echartSave" value="还原" onclick="revertCharts()"/>
+    </div>
+
+    <div>
+        <input type="button" name="deleteE1" value="删除折线图" onclick="deleteE1()"/>
+    </div>
+
+    <div>
+        <input type="button" name="deleteE2" value="删除柱状图" onclick="deleteE2()"/>
+    </div>
+
+    <div>
+        <input type="button" name="deleteE3" value="删除饼状图" onclick="deleteE3()"/>
+    </div>
+
+</div>
+<script type="text/javascript" src="js/echartsdrag.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,568 @@
+<html>
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Index</title>
+
+    <link rel="stylesheet" type="text/css" href="layui/css/layui.css"/>
+    <link rel="stylesheet" type="text/css" href="css/l_zoom.css"/>
+
+    <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+    <script src="js/echarts.min.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/div.js" type="text/javascript" charset="utf-8"></script>
+
+    <script src="js/l_zoom.min.js"></script>
+    <style type="text/css">
+        body, html {
+            /*overflow: hidden;*/
+            margin: 0;
+        }
+
+        body {
+            padding: 20px;
+        }
+
+        .content {
+            position: relative;
+        }
+
+        .drag {
+            padding: 10px;
+            border: 1px solid #aeeeee;
+
+            cursor: move;
+            position: absolute;
+            left: 0;
+            top: 0;
+            display: block;
+            float: left;
+        }
+
+        .result {
+            background-color: #afffff;
+            height: 30px;
+            position: relative;
+
+        }
+
+        .chearDrag {
+            text-align: center;
+            width: 30px;
+            height: 30px;
+            color: #b5a7a7;
+            line-height: 30px;
+            float: right;
+            background-color: #f7e6e6;
+            cursor: pointer; /*光标呈现为指示链接的指针（一只手）*/
+            z-index: 99999;
+        }
+
+
+    </style>
+</head>
+<body>
+<div class="content">
+    <div class="layui-form">
+        <div class="layui-form-item">
+
+            <div class="layui-input-inline">
+                <select name="quiz1">
+                    <option value="" disabled selected>请选择图表类型</option>
+                    <option value="1">折线图</option>
+                    <option value="2">柱状图</option>
+                    <option value="3">饼状图</option>
+                </select>
+            </div>
+            <div class="layui-input-inline">
+                <select name="quiz2">
+                    <option value=""disabled selected>请选择选择数据来源</option>
+                    <option value="/echarts/echarto?username=">折线图数据源</option>
+                    <option value="/echarts/echarttw?username=">柱状图数据源</option>
+                    <option value="/echarts/echartthl?username=">饼状图数据源</option>
+
+                </select>
+            </div>
+
+            <div class="layui-input-inline">
+                <button type="submit" class="layui-btn" lay-submit="" lay-filter="demo1">添加</button>
+                <!--                    <button type="reset" class="layui-btn layui-btn-primary">重置</button>-->
+            </div>
+
+        </div>
+
+
+    </div>
+    <!--    图表显示区域-->
+    <div id="echartsHtml">
+
+    </div>
+
+
+</div>
+
+
+</div>
+<script type="text/javascript" src="js/echartsdrag2.js"></script>
+<script type="text/javascript" src="layui/layui.all.js"></script>
+<script>
+    var echartsNum = 0;
+    var position = {};
+    var username="admin";
+
+    var positionList=[];
+
+
+    layui.use(["jquery", "upload", "form", "table", "layer", "element", "laydate"], function () {
+        $ = layui.jquery;
+        var element = layui.element,
+            layer = layui.layer,
+            upload = layui.upload,
+            form = layui.form,
+            laydate = layui.laydate,
+            table = layui.table;
+
+        //初始化个人图标
+        $.ajax({
+            type: "get",
+            async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+            url: "/echarts/queryPosition?username=" + username,    //请求发送到TestServlet处
+            dataType: "json",
+            success: function (res) {
+                var data=res;
+                positionList=res;
+                for(var i=0;i<data.length;i++){
+                    let urlStart=data[i].url;
+                    let strStart=urlStart.split("?")[0].split("/")[2];
+                    echartTuBiao(urlStart, data[i].type,strStart,
+                        data[i].echartaxaxis,
+                        data[i].echartayaxis,
+                        data[i].echartawidth,
+                        data[i].echartaheight,
+                        data[i].dispaly,0
+                    );
+                }
+                // let urlStart="/echarts/echarto?username=";
+                // let strStart=urlStart.split("?")[0].split("/")[1];
+                // echartTuBiao(urlStart, 1,strStart);
+                // urlStart="/echarts/echarttw?username=";
+                // strStart=urlStart.split("?")[0].split("/")[1];
+                // echartTuBiao(urlStart, 2,strStart);
+                // urlStart="/echarts/echartthl?username=";
+                // strStart=urlStart.split("?")[0].split("/")[1];
+                // echartTuBiao(urlStart, 3,strStart);
+            }
+
+        })
+
+
+
+        //监听提交
+        form.on('submit(demo1)', function (data) {
+            // layer.alert(JSON.stringify(data.field), {
+            //     title: '最终的提交信息'
+            // })
+            let str=data.field.quiz2.split("?")[0].split("/")[2];
+
+            for(var i=0;i<positionList.length;i++) {
+                if (positionList[i].url == data.field.quiz2 && positionList[i].type == data.field.quiz1) {
+                    let urlStart = positionList[i].url;
+                    let strStart = urlStart.split("?")[0].split("/")[2];
+                    echartTuBiao(urlStart, positionList[i].type, strStart,
+                        positionList[i].echartaxaxis,
+                        positionList[i].echartayaxis,
+                        positionList[i].echartawidth,
+                        positionList[i].echartaheight,
+                        "block",
+                        1
+                    );
+                } else {
+                    echartTuBiao(data.field.quiz2, data.field.quiz1, str,null,null,null,null,"block",1);
+                }
+            }
+
+            return false;
+        });
+
+        $("body").on('click', '.chearDrag', function () {
+            console.log("关闭", this);
+            console.log("关闭", $(this).parent());
+            $(this).parent().css("display", "none");
+            //更新数据库显示信息
+            console.log( $(this).parent().attr("id"));
+            console.log(   $(this).parent().css("top"));
+            echartSaveCharts("/echarts/"+$(this).parent().attr("id").slice(5)+"?username=", $(this).parent().attr("id").slice(4,5),$(this).parent().css("top"),$(this).parent().css("left"),$(this).parent().css("width"),$(this).parent().css("height"),"none");
+
+        });
+
+
+    });
+
+
+
+
+    function echartTuBiao(url, num,str,topd,leftd,widthd,heightd,displayd,startNum) {
+
+
+
+        let dragHtml = $("#drag" + num + str).html();
+        if (dragHtml != undefined) {
+            let top = 0;
+            let left = 0;
+            let width='380px';
+            let height='300px';
+            let display='block';
+
+            if(topd!=null&& topd!=''){
+                top=topd;
+            }
+            if(leftd!=null&& leftd!=''){
+                left=leftd;
+            }
+            if(widthd!=null&& widthd!=''){
+                width=widthd;
+            }
+            if(heightd!=null&& heightd!=''){
+                height=heightd;
+            }
+            if(displayd!=null && displayd!=''){
+                display=displayd;
+            }
+
+            if(startNum==1){
+                echartSaveCharts(url, num,top,left,width,height,"block");
+            }
+            $("#drag" + num + str).css("display", "block");
+            // $("#drag" + num + str).css("top", top);
+            // $("#drag" + num + str).css("left", left);
+            // $("#drag" + num + str).css("width", width);
+            // $("#drag" + num + str).css("height", height);
+        } else {
+
+            echartsNum++;
+            let top = 0;
+            let left = 0;
+            if (echartsNum % 3 == 0) {
+                let num1 = parseInt(echartsNum / 3);
+                top = ((num1 - 1) * 400 + 50) + "px";
+                left = ((echartsNum - 1 - (num1 - 1) * 3) * 400) + "px";
+            } else {
+                let num2 = echartsNum % 3;
+                let num3 = parseInt(echartsNum / 3);
+
+                top = ((num3) * 400 + 50) + "px";
+                left = ((num2 - 1) * 400) + "px";
+            }
+            let width='380px';
+            let height='300px';
+            let display='block';
+
+            if(topd!=null&& topd!=''){
+                top=topd;
+            }
+            if(leftd!=null&& leftd!=''){
+                left=leftd;
+            }
+            if(widthd!=null&& widthd!=''){
+                width=widthd;
+            }
+            if(heightd!=null&& heightd!=''){
+                height=heightd;
+            }
+            if(displayd!=null && displayd!=''){
+                display=displayd;
+            }
+
+
+
+
+            if(startNum==1){
+                echartSaveCharts(url, num,top,left,width,height,display);
+            }
+
+            let html = '<div class="drag" id="drag' + num + str + '" style="left:' + left + ';top:' + top + ';width:' + width + ';height:' + height + ';display:' + display + ';">' +
+                '        <div class="chearDrag">X</div>\n' +
+                '        <div style="display: block;float:left;height: 100%; width: 100%;"><div id="echart' + num + str + '" style="height: 100%;"></div></div>\n' +
+                '    </div>'
+
+            $("#echartsHtml").append(html);
+            let myChart = echarts.init(document.getElementById('echart' + num + str));
+
+            console.log(url);
+            console.log(num);
+
+            $.ajax({
+                type: "get",
+                async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+                url: url + username,    //请求发送到TestServlet处
+                dataType: "json",
+                success: function (res) {
+
+                    // let str = '';
+                    if (num == '1') {
+                        //     str = '{"data":{"data":[820,932,901,934,1290,1330,1320],"type":"line"},"position":{"username":"admin","echartawidth":400.0,"echartbwidth":400.0,"echartcwidth":400.0,"echartaheight":300.0,"echartbheight":300.0,"echartcheight":300.0,"echartaxaxis":350.0,"echartbxaxis":800.0,"echartcxaxis":1250.0,"echartayaxis":170.0,"echartbyaxis":170.0,"echartcyaxis":170.0}}'
+                        //     let res = JSON.parse(str);
+                        // 指定图表的配置项和数据
+                        myChart.setOption({
+                            title: {
+                                text: '折线图'
+                            },
+                            tooltip: {
+                                show: true
+                            },
+                            xAxis: {
+                                type: 'category',
+                                data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                            },
+                            yAxis: {
+                                type: 'value'
+                            },
+                            series: res["data"]
+                        });
+                    } else if (num == '2') {
+                        // str = '{"data1":[0.0,-8.901463875624668,-17.025413764148556,-24.038196249566663,-29.66504684804471,-33.699527649688676,-36.00971978255796,-36.541005056170455,-35.31542466107655,-32.427752866005996,-28.038563739693934,-22.364693082297347,-15.667600860943732,-8.240217424060843,-0.3929067389459173,7.560799717904647,15.318054209871054,22.599523033552096,29.16065418543528,34.800927952557615,39.37074152590451,42.77569739999406,44.97819140223978,45.99632376477021,45.900279829731865,44.806440199911805,42.86957840395034,40.2735832137877,37.22119936652441,33.92331243435557,30.588309963978517,27.412031986865767,24.56878097935778,22.203796820272576,20.427519715115604,19.311867685884827,18.888649906111855,19.150128087782186,20.051630602288828,21.516023200879346,23.439750867099516,25.700091656548704,28.163208735293757,30.692553648214542,33.1571635093161,35.439407573791215,37.44177367693234,39.09234039030659,40.34865356244595,41.19981246258526,41.66666666666667],"position":{"username":"admin","echartawidth":400.0,"echartbwidth":400.0,"echartcwidth":400.0,"echartaheight":300.0,"echartbheight":300.0,"echartcheight":300.0,"echartaxaxis":350.0,"echartbxaxis":800.0,"echartcxaxis":1250.0,"echartayaxis":170.0,"echartbyaxis":170.0,"echartcyaxis":170.0},"xAxisData":["类目0","类目1","类目2","类目3","类目4","类目5","类目6","类目7","类目8","类目9","类目10","类目11","类目12","类目13","类目14","类目15","类目16","类目17","类目18","类目19","类目20","类目21","类目22","类目23","类目24","类目25","类目26","类目27","类目28","类目29","类目30","类目31","类目32","类目33","类目34","类目35","类目36","类目37","类目38","类目39","类目40","类目41","类目42","类目43","类目44","类目45","类目46","类目47","类目48","类目49","类目50"],"data2":[-50.0,-47.18992898088751,-42.54426104547181,-36.290773900754886,-28.71517529663627,-20.146937097399626,-10.94374119697364,-1.4752538113770308,7.893046603320797,16.81528588241657,24.979206795219028,32.11821023962515,38.02096119056733,42.53821720798438,45.58667093073836,47.14973738101559,47.275355710354944,46.07100702178889,43.6962693226927,40.35333240268025,36.275975292575026,31.71756381888028,26.938653692729076,22.194784893913152,17.725026430574392,13.741778696752679,10.422266555457615,7.902063853319403,6.270884006107842,5.570756810898967,5.796594266992678,6.899033489892203,8.7893381290192,11.346045936704996,14.42297348773613,17.858132851517098,21.483081596548438,25.132218074866262,28.651548555679597,31.906490373810854,34.788333671419466,37.21906041552118,39.154309232933485,40.58437366457342,41.5332247510366,42.05565130942339,42.23270781895,42.165745792772285,41.969375711588256,41.76375960543808,41.66666666666667]}';
+                        // let res = JSON.parse(str);
+
+                        // 指定图表的配置项和数据
+                        myChart.setOption({
+                            title: {
+                                text: '柱状图'
+                            },
+                            legend: {
+                                data: ['bar', 'bar2']
+                            },
+
+                            tooltip: {},
+                            xAxis: {
+                                data: res["xAxisData"],
+                                splitLine: {
+                                    show: false
+                                }
+                            },
+                            yAxis: {},
+                            series: [{
+                                name: 'bar',
+                                type: 'bar',
+                                data: res["data1"],
+                                animationDelay: function (idx) {
+                                    return idx * 10;
+                                }
+                            }, {
+                                name: 'bar2',
+                                type: 'bar',
+                                data: res["data2"],
+                                animationDelay: function (idx) {
+                                    return idx * 10 + 100;
+                                }
+                            }],
+                            animationEasing: 'elasticOut',
+                            animationDelayUpdate: function (idx) {
+                                return idx * 5;
+                            }
+                        });
+                    } else if (num == '3') {
+                        // str = '{"data":{"name":"访问来源","type":"pie","data":[{"id":null,"value":555,"name":"直接访问"},{"id":null,"value":310,"name":"邮件营销"},{"id":null,"value":234,"name":"联盟广告"},{"id":null,"value":135,"name":"视频广告"},{"id":null,"value":135,"name":"搜索引擎"}]},"position":{"username":"admin","echartawidth":400.0,"echartbwidth":400.0,"echartcwidth":400.0,"echartaheight":300.0,"echartbheight":300.0,"echartcheight":300.0,"echartaxaxis":350.0,"echartbxaxis":800.0,"echartcxaxis":1250.0,"echartayaxis":170.0,"echartbyaxis":170.0,"echartcyaxis":170.0}}';
+                        // let res = JSON.parse(str);
+                        // 指定图表的配置项和数据
+                        myChart.setOption({
+                            title: {
+                                text: '饼状图',
+                                left: 'center'
+                            },
+                            tooltip: {
+                                trigger: 'item',
+                                formatter: '{a} <br/>{b} : {c} ({d}%)'
+                            },
+                            legend: {
+                                orient: 'vertical',
+                                left: 'left',
+                                data: ['直接访问', '邮件营销', '联盟广告', '视频广告', '搜索引擎']
+                            },
+                            series: [
+                                {
+                                    name: '访问来源',
+                                    type: 'pie',
+                                    radius: '55%',
+                                    center: ['50%', '60%'],
+                                    data: res["data"].data,
+                                    emphasis: {
+                                        itemStyle: {
+                                            shadowBlur: 10,
+                                            shadowOffsetX: 0,
+                                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                        }
+                                    }
+                                }
+                            ]
+                        });
+                    }
+
+                }
+            });
+            window.onresize = function () {
+                myChart.resize();
+            }
+            $("#drag" + num + str).resize(function () {
+                myChart.resize();
+            })
+
+            echartsTuoZhuai(str, num);
+        }
+    }
+
+
+    function echartsTuoZhuai(str, i) {
+//拖拽
+
+        var _move = false; //移动标记
+        var _x, _y;
+        var index_x, index_y;
+        var varName = 'drag' + i + str;//动态定义大DIV变量名
+        var varName2 = 'box2' + i + str;
+        var textName = 'result' + i + str; //动态定义大DIV变量名
+        var dragname = 'drag' + i + str;
+        // if (localStorage.getItem(dragname + 'width') !== null && localStorage.getItem(dragname + 'height') !== null) {
+        //     width = Number(localStorage.getItem(varName + 'width'))
+        //     height = Number(localStorage.getItem(varName + 'height'))//读取本地存储的位置信息给div设置大小
+        //     $('#' + dragname).css({
+        //         'width': width,
+        //         'height': height
+        //     });
+        // }
+        $("#" + varName).bind("mousedown", downIndex); //div鼠标按下事件绑定
+        $("#" + varName).bind("mousemove", mmove); //鼠标移动事件绑定
+        $("#" + varName).bind("mouseup", mup); //鼠标弹起事件绑定
+        function mmove(e) {
+            if (_move) {
+                var x = e.pageX - _x; //移动时根据鼠标位置计算控件左上角的绝对位置
+                var y = e.pageY - _y;
+
+                $("#" + e.currentTarget.id).css({
+                    top: y,
+                    left: x,
+                    'z-index': "999"
+                }); //div新位置
+                show(x, y, e);
+            }
+        }
+
+        function mup() {
+            _move = false;
+        }
+
+        function downIndex(e) {
+            _move = true;
+            console.log($(this))
+            _x = e.pageX - parseInt($("#" + e.currentTarget.id).css("left"));
+            _y = e.pageY - parseInt($("#" + e.currentTarget.id).css("top"));
+
+        }
+
+        function show(x, y, e) {
+            // localStorage.setItem(e.currentTarget.id + 'x', x)
+            // localStorage.setItem(e.currentTarget.id + 'y', y)
+            // if(e.currentTarget.id === 'drag1'){
+            //     position.echartaxaxis = Number(x);
+            //     position.echartayaxis =Number(y);
+            // }
+            // if(e.currentTarget.id === 'drag2'){
+            //     position.echartbxaxis = Number(x);
+            //     position.echartbyaxis =Number(y);
+            // }
+            // if(e.currentTarget.id === 'drag3'){
+            //     position.echartcxaxis = Number(x);
+            //     position.echartcyaxis =Number(y);
+            // }
+            //document.getElementById(e.currentTarget.id).childNodes[1].innerHTML = "x坐标为：" + x + "y坐标为：" + y +
+            "(注：这是div左顶点的坐标)";
+        }
+
+        $("#" + dragname).resize(function () {
+            if ($(this)[0].id === 'drag1') {
+                position.echartawidth = Number($(this).width());
+                position.echartaheight = Number($(this).height());
+            }
+            if ($(this)[0].id === 'drag2') {
+                position.echartbwidth = Number($(this).width());
+                position.echartbheight = Number($(this).height());
+            }
+            if ($(this)[0].id === 'drag3') {
+                position.echartcwidth = Number($(this).width());
+                position.echartcheight = Number($(this).height());
+            }
+            // localStorage.setItem($(this)[0].id + 'width', $(this).width());
+            // localStorage.setItem($(this)[0].id + 'height', $(this).height());
+
+
+        });
+
+        drag[dragname] = function () {
+            var y = 0,
+                x = 0;
+            let node = document.getElementById(varName)
+            // if (localStorage.getItem(varName + 'x') !== null && localStorage.getItem(varName + 'y') !== null) {
+            //     node.style.top = Number(localStorage.getItem(varName + 'y')) - node.offsetHeight / 2 + 'px'
+            //     node.style.left = Number(localStorage.getItem(varName + 'x')) - node.offsetWidth / 2 + 'px' //读取本地存储的位置信息给div设置位置
+            // }
+
+            node.onmousedown = function (e) {
+                node.onmousemove = function (e) {
+                    y = e.clientY;
+                    x = e.clientX;
+
+
+                    node.style.top = y - node.offsetHeight / 2 + 'px'
+                    node.style.left = x - node.offsetWidth / 2 + 'px'
+                    document.onmouseup = function () {
+                        //更新移动位置
+                        echartSaveCharts("/echarts/"+node.id.slice(5)+"?username=", node.id.slice(4,5),node.style.top,node.style.left,node.style.width,node.style.height,node.style.display);
+
+                        // if (node.id === 'drag1') {
+                        //     position.echartaxaxis = Number(x);
+                        //     position.echartayaxis = Number(y);
+                        // }
+                        // if (node.id === 'drag2') {
+                        //     position.echartbxaxis = Number(x);
+                        //     position.echartbyaxis = Number(y);
+                        // }
+                        // if (node.id === 'drag3') {
+                        //     position.echartcxaxis = Number(x);
+                        //     position.echartcyaxis = Number(y);
+                        // }
+                        // localStorage.setItem(node.id + 'x', x)
+                        // localStorage.setItem(node.id + 'y', y)
+                        node.onmousemove = null;
+                    }
+                }
+            }
+        }
+        eval('drag.' + dragname + '()');
+    }
+
+    function echartSaveCharts(url, num,topd,leftd,widthd,heightd,displayd) {
+        console.log(topd);
+        let fromDate={
+            url:url,
+            type:num,
+            echartaxaxis:(topd+"").indexOf("px") != -1 ? (topd+"").split("px")[0]:(topd+"") ,
+            echartayaxis:(leftd+"").indexOf("px") != -1 ? (leftd+"").split("px")[0]:(leftd+"") ,
+            echartawidth:(widthd+"").indexOf("px") != -1 ? (widthd+"").split("px")[0]:(widthd+"") ,
+            echartaheight:(heightd+"").indexOf("px") != -1 ? (heightd+"").split("px")[0]:(heightd+"") ,
+            display:displayd,
+            username:username
+        }
+        $.ajax({
+            type: "post",
+            data: fromDate,
+            async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+            url: "/echarts/putPosition",    //请求发送到TestServlet处
+            dataType: "json",
+            success: function (res) {
+                if (res === true) console.log("图片位置保存成功")
+            }
+        });
+    }
+
+
+</script>
+</body>
+
+</html>

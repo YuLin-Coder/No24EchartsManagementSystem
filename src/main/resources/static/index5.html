@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link href="../layui/css/layui.css" rel="stylesheet" />
+    <script src="layui/layui.all.js"></script>
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <title></title>
+</head>
+<body>
+
+<form class="layui-form" action="">
+    <div class="layui-input-inline from-ses" style="width: 140px;">
+        <select name="quiz1"id="quiz1"lay-filter="quiz1">
+            <option value="">一级分类</option>
+            <option value="灾害数据" >灾害数据</option>
+            <option value="新能源">新能源</option>
+        </select>
+    </div>
+    <div class="layui-input-inline from-ses">
+        <select name="quiz2" id="quiz2">
+            <option value="">二级分类</option>
+            <option value="电网覆冰监测">电网覆冰监测</option>
+            <option value="电网覆冰预测预警" >电网覆冰预测预警</option>
+            <option value="电网舞动监测">电网舞动监测</option>
+            <option value="电网舞动预测预警">电网舞动预测预警</option>
+            <option value="电网山火检测">电网山火检测</option>
+            <option value="电网山火预测预警">电网山火预测预警</option>
+        </select>
+    </div>
+</form>
+
+
+<form class="layui-form" action="">
+    <div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">选择city</label>
+            <div class="layui-input-block">
+                <select name="cityname" id="cityid" lay-verify="required" lay-filter="cityfilter">
+                    <option value=""></option>
+                    <option value="0">北京</option>
+                    <option value="1">上海</option>
+                    <option value="2">广州</option>
+                    <option value="3">深圳</option>
+                    <option value="4">杭州</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">选择区域</label>
+            <div class="layui-input-block">
+                <select name="quyuname" id="quyuid" lay-verify="required" lay-filter="quyufilter"></select>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        layui.use('form', function () {
+            var form = layui.form;
+            layui.form.on('select(cityfilter)', function (data) {
+                if (data.value == "") {
+                    $('#quyuid').html('<option value="">请选择区域</option>');
+                    layui.form.render("select");
+                }
+                else {
+                    if (data.value == "0") {
+                        $('#quyuid').html('<option value="">请选择区域</option>')
+                        $('#quyuid').append(new Option("北京1", 0));
+                        $('#quyuid').append(new Option("北京2", 1));
+                        $('#quyuid').append(new Option("北京3", 2));
+                        $('#quyuid').append(new Option("北京4", 3));
+                    }
+                    else if (data.value == "1") {
+                        $('#quyuid').html('<option value="">请选择区域</option>')
+                        $('#quyuid').append(new Option("上海1", 0));
+                        $('#quyuid').append(new Option("上海2", 1));
+                        $('#quyuid').append(new Option("上海3", 2));
+                        $('#quyuid').append(new Option("上海4", 3));
+                    }
+                    else if (data.value == "2") {
+                        $('#quyuid').html('<option value="">请选择区域</option>')
+                        $('#quyuid').append(new Option("广州1", 0));
+                        $('#quyuid').append(new Option("广州2", 1));
+                        $('#quyuid').append(new Option("广州3", 2));
+                        $('#quyuid').append(new Option("广州4", 3));
+                    }
+                    else if (data.value == "3") {
+                        $('#quyuid').html('<option value="">请选择区域</option>')
+                        $('#quyuid').append(new Option("深圳1", 0));
+                        $('#quyuid').append(new Option("深圳2", 1));
+                        $('#quyuid').append(new Option("深圳3", 2));
+                        $('#quyuid').append(new Option("深圳4", 3));
+                    }
+                    else if (data.value == "4") {
+                        $('#quyuid').html('<option value="">请选择区域</option>')
+                        $('#quyuid').append(new Option("杭州1", 0));
+                        $('#quyuid').append(new Option("杭州2", 1));
+                        $('#quyuid').append(new Option("杭州3", 2));
+                        $('#quyuid').append(new Option("杭州4", 3));
+                    }
+                    layui.form.render("select");
+//$.getJSON('@Url.Action("GetSelectCommunity", "Values", new { httproute = "DefaultApi", area = "" })' + "?id=" + data.value, function (data) {
+// $('#ownscommunityId1').html('<option value="">请选择社区/村</option>')
+
+// $.each(data, function (index, item) {
+// $('#ownscommunityId1').append(new Option(item.Name, item.Code));// 下拉菜单里添加元素
+// });
+// layui.form.render("select");
+//});
+                }
+            });
+        });
+    </script>
+</form>
+</body>
+</html>

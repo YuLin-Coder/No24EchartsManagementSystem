@@ -1,0 +1,434 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>banner 列表</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+    <meta http-equiv="expires" content="Wed, 26 Feb 1997 08:21:57 GMT">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" href="layui/css/layui.css" media="all"/>
+    <link rel="stylesheet" href="css/list.css" media="all"/>
+    <style type="text/css">
+        .layui-form-item .layui-input-inline {
+            width: 170px !important;
+        }
+    </style>
+</head>
+<body class="childrenBody">
+
+<blockquote class="layui-elem-quote news_search">
+
+    <div class="layui-inline">
+        <a class="layui-btn layui-btn-normal adminAdd_btn"><i
+                class="layui-icon">&#xe608;</i> 添加图表</a>
+    </div>
+</blockquote>
+
+
+
+<div class="layui-form">
+    <table id="userList" lay-filter="userList"></table>
+</div>
+<script type="text/javascript" src="layui/layui.js"></script>
+<script type="text/html" id="barEdit">
+    <a class="layui-btn layui-btn-xs" lay-event="info">查看</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit1">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="typeTpl">
+    {{#  if(d.type === '1'){ }}
+    <span>折线图</span>
+    {{#  } else if(d.type === '2'){ }}
+    <span>柱状图</span>
+    {{#  } else if(d.type === '3'){ }}
+    <span>饼状图</span>
+    {{#  } }}
+</script>
+
+<script>
+    var $layer;
+    var $table;
+    var indexadd;
+    var username='admin';
+    layui.config({base: "js/"}).use(['form', 'layer', 'jquery', 'table', 'laydate', 'upload'], function () {
+        var form = layui.form,
+            table = layui.table,
+            layer = layui.layer,
+            upload = layui.upload,
+            $ = layui.jquery;
+
+        //加载页面数据
+        table.render({
+            id: 'userList'
+            , elem: '#userList'
+            , url: '/echarts/queryEchartsUrlList' //数据接口
+            , limit: 10//每页默认数
+            , limits: [10, 20, 30, 40]
+            , cols: [
+                [ //表头
+                    {
+                        field: 'username',
+                        title: '姓名',
+
+                    }, {
+                    field: 'name',
+                    title: '图表名称',
+
+                }, {
+                    field: 'type',
+                    title: '图表类型',
+
+                    templet: '#typeTpl'
+                }, {
+                    field: 'url',
+                    title: 'URL路径',
+
+                }, {
+                    title: '操作',
+                    toolbar: '#barEdit',
+
+                }]
+            ]
+            , page: true  //开启分页
+            , where: {
+                timestamp: (new Date()).valueOf(),
+                username:username
+            }
+        });
+
+        //添加角色
+        $(".adminAdd_btn").click(function() {
+            var indexOpen = layer.open({
+                title: '添加图表',
+                type: 1,
+                area: ['600px', '400px'],
+                offset: ['50px', '250px'],
+                content: '<blockquote class="layui-elem-quote layui-text">注意事项: 请查看相关的数据信息! </blockquote>' +
+                    '<form class="layui-form" lay-filter="fromDataLook"> ' +
+                    '<div class="layui-form-item">' +
+                    '<div class="layui-inline">' +
+                    '<label class="layui-form-label">图表名称:</label>' +
+                    '<div class="layui-input-inline">' +
+                    '<input type="text" name="name"  placeholder="请输入图表名称" class="layui-input" value=""  >' +
+                    '</div></div>' +
+                    '</div>' +
+
+                    '<div class="layui-form-item">' +
+                    '<div class="layui-inline">' +
+                    '<label class="layui-form-label">图表类型:</label>' +
+                    '<div class="layui-input-inline">' +
+                    ' <select name="type">\n' +
+                    '                    <option value="1">折线图</option>\n' +
+                    '                    <option value="2">柱状图</option>\n' +
+                    '                    <option value="3">饼状图</option>\n' +
+                    '                </select>'+
+                    '</div></div>' +
+                    '</div>' +
+
+                    '<div class="layui-form-item">' +
+                    '<div class="layui-inline">' +
+                    '<label class="layui-form-label">URL路径:</label>' +
+                    '<div class="layui-input-inline">' +
+                    '<input type="text" name="url" placeholder="请输入URL路径"  class="layui-input" value="" >' +
+                    '</div></div>' +
+                    '</div>' +
+
+                    '</form>',
+                btnAlign: 'c',
+                btn: ['确定', '取消'],
+                yes: function (index, layero) {
+                    //初始化个人图标
+
+                    let fromDate = {
+                        name: $("input[name=name]").val(),
+                        type: $("select[name=type]").val(),
+                        url: $("input[name=url]").val(),
+                        username: username
+                    }
+
+                    $.ajax({
+                        type: "post",
+                        async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+                        url: "/echarts/putEchartsUrl",    //请求发送到TestServlet处
+                        dataType: "json",
+                        data:fromDate,
+                        success: function (res) {
+                            var data = res.data;
+                            window.location.reload();
+                        }
+
+                    })
+
+
+                    return false;
+                }, btn2: function (index, layero) {
+                    layer.msg("取消");
+                    //return false 开启该代码可禁止点击该按钮关闭
+                }, cancel: function () {
+                    layer.msg("关闭窗口");
+                    //右上角关闭回调
+                    //return false 开启该代码可禁止点击该按钮关闭
+                },
+                success: function () {
+                    layui.use('form', function () {
+                        var form = layui.form; //只有执行了这一步，部分表单元素才会修饰成功
+                        form.render('checkbox');
+                        form.render('select');
+                        form.on('checkbox(istrue)', function (data) {
+                            /* if(data.elem.checked){
+                             emailConfig['isenterprise']=1;
+                             }; //是否被选中，true或者false*/
+                        });
+
+                    });
+                }
+            })
+        })
+
+        //监听工具条
+        table.on('tool(userList)', function (obj) {
+            var data = obj.data;
+            if (obj.event === 'info') {
+                var indexOpen = layer.open({
+                    title: '查看',
+                    type: 1,
+                    area: ['800px', '500px'],
+                    offset: ['50px', '250px'],
+                    content: '<blockquote class="layui-elem-quote layui-text">注意事项: 请查看相关的数据信息! </blockquote>' +
+                        '<form class="layui-form" lay-filter="fromDataLook"> ' +
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">图表名称:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="name"  placeholder="请输入图表名称" class="layui-input" value="'+data.name+'" readonly >' +
+                        '</div></div>' +
+                        '</div>' +
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">图表类型:</label>' +
+                        '<div class="layui-input-inline">' +
+                        ' <select name="type" readonly>\n' +
+                        '                    <option value="1">折线图</option>\n' +
+                        '                    <option value="2">柱状图</option>\n' +
+                        '                    <option value="3">饼状图</option>\n' +
+                        '                </select>'+
+                        '</div></div>' +
+                        '</div>' +
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">URL路径:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="url" placeholder="请输入URL路径"  class="layui-input" value="'+data.url+'" readonly >' +
+                        '</div></div>' +
+                        '</div>' +
+
+                        '</form>',
+                    btnAlign: 'c',
+                    btn: ['确定', '取消'],
+                    yes: function (index, layero) {
+                        layer.msg("关闭窗口");
+                        layer.close(index);
+                        return false;
+                    }, btn2: function (index, layero) {
+                        layer.msg("取消");
+                        //return false 开启该代码可禁止点击该按钮关闭
+                    }, cancel: function () {
+                        layer.msg("关闭窗口");
+                        //右上角关闭回调
+                        //return false 开启该代码可禁止点击该按钮关闭
+                    },
+                    success: function () {
+                        layui.use('form', function () {
+                            var form = layui.form; //只有执行了这一步，部分表单元素才会修饰成功
+                            form.val("fromDataLook", { //formTest 即 class="layui-form" 所在元素属性 lay-filter="" 对应的值
+                                "type": data.type,
+                            });
+
+                            form.render('checkbox');
+                            form.render('select');
+                            form.on('checkbox(istrue)', function (data) {
+                                /* if(data.elem.checked){
+                                 emailConfig['isenterprise']=1;
+                                 }; //是否被选中，true或者false*/
+                            });
+
+                        });
+                    }
+                })
+            }
+            if (obj.event === 'edit1') {
+                var indexOpen = layer.open({
+                    title: '查看',
+                    type: 1,
+                    area: ['800px', '500px'],
+                    offset: ['50px', '250px'],
+                    content: '<blockquote class="layui-elem-quote layui-text">注意事项: 请查看相关的数据信息! </blockquote>' +
+                        '<form class="layui-form" lay-filter="fromDataLook"> ' +
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">图表名称:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="name"  placeholder="请输入图表名称" class="layui-input" value="'+data.name+'" >' +
+                        '</div></div>' +
+                        '</div>' +
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">图表类型:</label>' +
+                        '<div class="layui-input-inline">' +
+                        ' <select name="type">\n' +
+                        '                    <option value="1">折线图</option>\n' +
+                        '                    <option value="2">柱状图</option>\n' +
+                        '                    <option value="3">饼状图</option>\n' +
+                        '                </select>'+
+                        '</div></div>' +
+                        '</div>' +
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">URL路径:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="url" placeholder="请输入URL路径"  class="layui-input" value="'+data.url+'" >' +
+                        '</div></div>' +
+                        '</div>' +
+
+                        '</form>',
+                    btnAlign: 'c',
+                    btn: ['确定', '取消'],
+                    yes: function (index, layero) {
+                        let fromDate = {
+                            name: $("input[name=name]").val(),
+                            type: $("select[name=type]").val(),
+                            url: $("input[name=url]").val(),
+                            id: data.id,
+                            username: username
+                        }
+
+                        $.ajax({
+                            type: "post",
+                            async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+                            url: "/echarts/putEchartsUrl",    //请求发送到TestServlet处
+                            dataType: "json",
+                            data:fromDate,
+                            success: function (res) {
+                                var data = res.data;
+                                window.location.reload();
+                            }
+
+                        })
+                        return false;
+                    }, btn2: function (index, layero) {
+                        layer.msg("取消");
+                        //return false 开启该代码可禁止点击该按钮关闭
+                    }, cancel: function () {
+                        layer.msg("关闭窗口");
+                        //右上角关闭回调
+                        //return false 开启该代码可禁止点击该按钮关闭
+                    },
+                    success: function () {
+                        layui.use('form', function () {
+                            var form = layui.form; //只有执行了这一步，部分表单元素才会修饰成功
+                            form.val("fromDataLook", { //formTest 即 class="layui-form" 所在元素属性 lay-filter="" 对应的值
+                                "type": data.type,
+                            });
+
+                            form.render('checkbox');
+                            form.render('select');
+                            form.on('checkbox(istrue)', function (data) {
+                                /* if(data.elem.checked){
+                                 emailConfig['isenterprise']=1;
+                                 }; //是否被选中，true或者false*/
+                            });
+
+                        });
+                    }
+                })
+            }
+            if (obj.event === 'del') {
+                layer.confirm('真的删除此条数据吗?', function (index) {
+                    $.ajax({
+                        async: false,
+                        url: '/echarts/deleteEchartsUrl',
+                        type: "get",
+                        data: {
+                            id: data.id
+                        },
+                        success: function (d) {
+                            window.location.reload();
+                        }
+                    })
+                    layer.close(index);
+                });
+            }
+        });
+
+
+        $table = table;
+        $layer = layer;
+
+    })
+
+
+    //添加后刷新表格
+    function uploadTable() {
+        $layer.close(indexadd);
+        //执行重载
+        $table.reload('userList', {
+            page: {
+                curr: 1
+                //重新从第 1 页开始
+            },
+            where: {
+                _t: new Date().getTime(),
+                category: 'A'
+            }
+        });
+    }
+
+
+    //格式化时间
+    function formatTime(datetime, fmt) {
+        if (datetime == null || datetime == 0) {
+            return "";
+        }
+        if (parseInt(datetime) == datetime) {
+            if (datetime.length == 10) {
+                datetime = parseInt(datetime) * 1000;
+            } else if (datetime.length == 13) {
+                datetime = parseInt(datetime);
+            }
+        }
+        datetime = new Date(datetime);
+        var o = {
+            "M+": datetime.getMonth() + 1, //月份
+            "d+": datetime.getDate(), //日
+            "h+": datetime.getHours(), //小时
+            "m+": datetime.getMinutes(), //分
+            "s+": datetime.getSeconds(), //秒
+            "q+": Math.floor((datetime.getMonth() + 3) / 3), //季度
+            "S": datetime.getMilliseconds()
+            //毫秒
+        };
+        if (/(y+)/.test(fmt))
+            fmt = fmt.replace(RegExp.$1, (datetime.getFullYear() + "")
+                .substr(4 - RegExp.$1.length));
+        for (var k in o)
+            if (new RegExp("(" + k + ")").test(fmt))
+                fmt = fmt.replace(RegExp.$1,
+                    (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k])
+                        .substr(("" + o[k]).length)));
+        return fmt;
+    }
+</script>
+</body>
+</html>

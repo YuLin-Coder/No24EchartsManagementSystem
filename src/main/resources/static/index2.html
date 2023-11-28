@@ -1,0 +1,606 @@
+<html>
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>ECHARTS</title>
+
+    <link rel="stylesheet" type="text/css" href="layui/css/layui.css"/>
+    <link rel="stylesheet" type="text/css" href="css/l_zoom.css"/>
+
+    <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+    <script src="js/echarts.min.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/div.js" type="text/javascript" charset="utf-8"></script>
+
+    <script src="js/l_zoom.min.js"></script>
+    <style type="text/css">
+        body, html {
+            /*overflow: hidden;*/
+            margin: 0;
+        }
+
+        body {
+            padding: 20px;
+        }
+
+        .content {
+            position: relative;
+        }
+
+        .drag {
+            padding: 10px;
+            border: 1px solid #aeeeee;
+
+            cursor: move;
+            position: absolute;
+            left: 0;
+            top: 0;
+            display: block;
+            float: left;
+        }
+
+        .result {
+            background-color: #afffff;
+            height: 30px;
+            position: relative;
+
+        }
+
+        .chearDrag {
+            text-align: center;
+            width: 30px;
+            height: 30px;
+            color: #b5a7a7;
+            line-height: 30px;
+            float: right;
+            background-color: #f7e6e6;
+            cursor: pointer; /*光标呈现为指示链接的指针（一只手）*/
+            z-index: 99999;
+        }
+
+
+    </style>
+</head>
+<body>
+<div class="content">
+    <div class="layui-form">
+        <div class="layui-form-item">
+
+            <div class="layui-input-inline">
+                <select name="quiz1" lay-filter="test1">
+                    <option value="" disabled selected>请选择图表类型</option>
+                </select>
+            </div>
+            <div class="layui-input-inline">
+                <select name="quiz2">
+                    <option value="" disabled selected>请选择选择数据来源</option>
+                </select>
+            </div>
+
+            <div class="layui-input-inline">
+                <button type="submit" class="layui-btn" lay-submit="" lay-filter="demo1">添加</button>
+                <!--                    <button type="reset" class="layui-btn layui-btn-primary">重置</button>-->
+            </div>
+
+        </div>
+
+
+    </div>
+    <!--    图表显示区域-->
+    <div id="echartsHtml">
+
+    </div>
+
+
+</div>
+
+
+</div>
+<script type="text/javascript" src="js/echartsdrag2.js"></script>
+<script type="text/javascript" src="layui/layui.all.js"></script>
+<script>
+    var echartsNum = 0;
+    var position = {};
+    var username = "admin";
+
+    var positionList = [];
+    var mapData=[];
+
+    layui.use(["jquery", "upload", "form", "table", "layer", "element", "laydate"], function () {
+        $ = layui.jquery;
+        var element = layui.element,
+            layer = layui.layer,
+            upload = layui.upload,
+            form = layui.form,
+            laydate = layui.laydate,
+            table = layui.table;
+
+
+        //查询个人图表
+        $.ajax({
+            type: "get",
+            async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+            url: "/echarts/queryEchartsUrlToIndex?username=" + username,    //请求发送到TestServlet处
+            dataType: "json",
+            success: function (res) {
+                mapData=res.data;
+            }
+
+        })
+
+
+
+        let htmlOption='';
+        for(let i=0;i<mapData.length;i++){
+            htmlOption+='<option value="'+mapData[i].type+'">'+mapData[i].title+'</option>';
+        }
+          $("select[name=quiz1]").append(htmlOption);
+        form.render('select'); //刷新select选择框渲染
+
+        form.on('select(test1)', function(data){
+            console.log(data.elem); //得到select原始DOM对象
+            console.log(data.value); //得到被选中的值
+            console.log(data.othis); //得到美化后的DOM对象
+            $("select[name=quiz2]").empty();
+            let htmlOption2='<option value="" disabled selected>请选择选择数据来源</option>';
+
+
+            if(data.value!=null && data.value!=''){
+
+                for(let i=0;i<mapData.length;i++){
+
+                    if(mapData[i].type+''==data.value){
+                        var letLset=mapData[i].valueList;
+                        for(let j=0;j<letLset.length;j++){
+                            htmlOption2+='<option value="'+letLset[j].value+'">'+letLset[j].title+'</option>';
+                        }
+                        break;
+                    }
+
+                }
+
+            }
+            $("select[name=quiz2]").append(htmlOption2);
+            form.render('select'); //刷新select选择框渲染
+        });
+
+        //初始化个人图标
+        $.ajax({
+            type: "get",
+            async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+            url: "/echarts/queryPosition?username=" + username,    //请求发送到TestServlet处
+            dataType: "json",
+            success: function (res) {
+                var data = res.data;
+                positionList = res.data;
+                for (var i = 0; i < data.length; i++) {
+                    let urlStart = data[i].url;
+                    let strStart = urlStart.split("?")[0].split("/")[2];
+                    echartTuBiao(urlStart, data[i].type, strStart,
+                        data[i].echartaxaxis,
+                        data[i].echartayaxis,
+                        data[i].echartawidth,
+                        data[i].echartaheight,
+                        data[i].display, 0
+                    );
+                }
+            }
+
+        })
+
+
+        //监听提交
+        form.on('submit(demo1)', function (data) {
+            // layer.alert(JSON.stringify(data.field), {
+            //     title: '最终的提交信息'
+            // })
+
+            if (data.field.quiz2 == null || data.field.quiz2 == '' || data.field.quiz1 == null || data.field.quiz1 == '') {
+                alert("选项不能唯空");
+                return false;
+            }
+
+            let str = data.field.quiz2.split("?")[0].split("/")[2];
+            let isTrue = false;
+            for (var i = 0; i < positionList.length; i++) {
+                if (positionList[i].url == data.field.quiz2 && positionList[i].type == data.field.quiz1) {
+                    let urlStart = positionList[i].url;
+                    let strStart = urlStart.split("?")[0].split("/")[2];
+                    echartTuBiao(urlStart, positionList[i].type, strStart,
+                        positionList[i].echartaxaxis,
+                        positionList[i].echartayaxis,
+                        positionList[i].echartawidth,
+                        positionList[i].echartaheight,
+                        "block",
+                        1
+                    );
+                    isTrue = true;
+                }
+            }
+            if (!isTrue) {
+                echartTuBiao(data.field.quiz2, data.field.quiz1, str, null, null, null, null, "block", 1);
+            }
+            return false;
+        });
+
+        $("body").on('click', '.chearDrag', function (e) {
+
+            $(this).parent().css("display", "none");
+            //更新数据库显示信息
+
+            echartSaveCharts("/echarts/" + $(this).parent().attr("id").slice(5) + "?username=", $(this).parent().attr("id").slice(4, 5), $(this).parent().css("top"), $(this).parent().css("left"), $(this).parent().css("width"), $(this).parent().css("height"), "none");
+
+            //区分不同浏览器内核情况
+            var e = window.event || e;
+            if (e.stopPropagation) e.stopPropagation();
+            else e.cancelBubble = true;
+
+            return false;
+        });
+
+
+    });
+
+
+    function echartTuBiao(url, num, str, topd, leftd, widthd, heightd, displayd, startNum) {
+
+
+        let dragHtml = $("#drag" + num + str).html();
+        if (dragHtml != undefined) {
+            let top = 0;
+            let left = 0;
+            let width = '380px';
+            let height = '300px';
+            let display = 'block';
+
+            if (topd != null && topd != '') {
+                top = topd;
+            }
+            if (leftd != null && leftd != '') {
+                left = leftd;
+            }
+            if (widthd != null && widthd != '') {
+                width = widthd;
+            }
+            if (heightd != null && heightd != '') {
+                height = heightd;
+            }
+            if (displayd != null && displayd != '') {
+                display = displayd;
+            }
+
+            if (startNum == 1) {
+                echartSaveCharts(url, num, top, left, width, height, "block");
+            }
+            window.location.reload();
+            $("#drag" + num + str).css("display", "block");
+        } else {
+
+            echartsNum++;
+            let top = 0;
+            let left = 0;
+            if (echartsNum % 3 == 0) {
+                let num1 = parseInt(echartsNum / 3);
+                top = ((num1 - 1) * 400 + 50) + "px";
+                left = ((echartsNum - 1 - (num1 - 1) * 3) * 400) + "px";
+            } else {
+                let num2 = echartsNum % 3;
+                let num3 = parseInt(echartsNum / 3);
+
+                top = ((num3) * 400 + 50) + "px";
+                left = ((num2 - 1) * 400) + "px";
+            }
+            let width = '380px';
+            let height = '300px';
+            let display = 'block';
+
+            if (topd != null && topd != '') {
+                top = topd;
+            }
+            if (leftd != null && leftd != '') {
+                left = leftd;
+            }
+            if (widthd != null && widthd != '') {
+                width = widthd;
+            }
+            if (heightd != null && heightd != '') {
+                height = heightd;
+            }
+            if (displayd != null && displayd != '') {
+                display = displayd;
+            }
+
+
+            if (startNum == 1) {
+                echartSaveCharts(url, num, top, left, width, height, display);
+            }
+
+            let html = '<div class="drag" id="drag' + num + str + '" style="left:' + left + ';top:' + top + ';width:' + width + ';height:' + height + ';display:' + display + ';">' +
+                '        <div class="chearDrag">X</div>\n' +
+                '        <div style="display: block;float:left;height: 100%; width: 100%;"><div id="echart' + num + str + '" style="height: 100%;"></div></div>\n' +
+                '    </div>'
+
+            $("#echartsHtml").append(html);
+        }
+            let myChart = echarts.init(document.getElementById('echart' + num + str));
+
+            console.log(url);
+            console.log(num);
+
+            $.ajax({
+                type: "get",
+                async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+                url: url + username,    //请求发送到TestServlet处
+                dataType: "json",
+                success: function (res) {
+                    console.log(res);
+                    // let str = '';
+                    if (num == '1') {
+
+                        //查找图表名称:
+                        var tableName='';
+                        for(var i=0;i<mapData.length;i++){
+                            if(num==mapData[i].type+''){
+                                var list=mapData[i].valueList;
+                                for(var j=0;j<list.length;j++){
+                                    if(url==list[j].value){
+                                        tableName=list[j].title;
+                                    }
+                                }
+                            }
+                        }
+
+
+                        // 指定图表的配置项和数据
+                        myChart.setOption({
+                            title: {
+                                text: tableName
+                            },
+                            tooltip: {
+                                show: true
+                            },
+                            xAxis: {
+                                type: 'category',
+                                data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                            },
+                            yAxis: {
+                                type: 'value'
+                            },
+                            series: [{
+                                data: res.data,
+                                type: 'line'
+                            }]
+                        });
+                    } else if (num == '2') {
+                        //查找图表名称:
+                        var tableName='';
+                        for(var i=0;i<mapData.length;i++){
+                            if(num==mapData[i].type+''){
+                                var list=mapData[i].valueList;
+                                for(var j=0;j<list.length;j++){
+                                    if(url==list[j].value){
+                                        tableName=list[j].title;
+                                    }
+                                }
+                            }
+                        }
+                        // 指定图表的配置项和数据
+
+                        myChart.setOption({
+                            title: {
+                                text: tableName
+                            },
+                            legend: {
+                                data: ['bar', 'bar2']
+                            },
+
+                            tooltip: {},
+                            xAxis: {
+                                data: res.data["xAxisData"],
+                                splitLine: {
+                                    show: false
+                                }
+                            },
+                            yAxis: {},
+                            series: [{
+                                name: 'bar',
+                                type: 'bar',
+                                data: res.data["data1"],
+                                animationDelay: function (idx) {
+                                    return idx * 10;
+                                }
+                            }, {
+                                name: 'bar2',
+                                type: 'bar',
+                                data: res.data["data2"],
+                                animationDelay: function (idx) {
+                                    return idx * 10 + 100;
+                                }
+                            }],
+                            animationEasing: 'elasticOut',
+                            animationDelayUpdate: function (idx) {
+                                return idx * 5;
+                            }
+                        });
+                    } else if (num == '3') {
+                        // str = '{"data":{"name":"访问来源","type":"pie","data":[{"id":null,"value":555,"name":"直接访问"},{"id":null,"value":310,"name":"邮件营销"},{"id":null,"value":234,"name":"联盟广告"},{"id":null,"value":135,"name":"视频广告"},{"id":null,"value":135,"name":"搜索引擎"}]},"position":{"username":"admin","echartawidth":400.0,"echartbwidth":400.0,"echartcwidth":400.0,"echartaheight":300.0,"echartbheight":300.0,"echartcheight":300.0,"echartaxaxis":350.0,"echartbxaxis":800.0,"echartcxaxis":1250.0,"echartayaxis":170.0,"echartbyaxis":170.0,"echartcyaxis":170.0}}';
+                        // let res = JSON.parse(str);
+                        //查找图表名称:
+                        var tableName='';
+                        for(var i=0;i<mapData.length;i++){
+                            if(num==mapData[i].type+''){
+                                var list=mapData[i].valueList;
+                                for(var j=0;j<list.length;j++){
+                                    if(url==list[j].value){
+                                        tableName=list[j].title;
+                                    }
+                                }
+                            }
+                        }
+                        // 指定图表的配置项和数据
+                        myChart.setOption({
+                            title: {
+                                text: tableName,
+                                left: 'center'
+                            },
+                            tooltip: {
+                                trigger: 'item',
+                                formatter: '{a} <br/>{b} : {c} ({d}%)'
+                            },
+                            legend: {
+                                orient: 'vertical',
+                                left: 'left',
+                                data: ['直接访问', '邮件营销', '联盟广告', '视频广告', '搜索引擎']
+                            },
+                            series: [
+                                {
+                                    name: '访问来源',
+                                    type: 'pie',
+                                    radius: '55%',
+                                    center: ['50%', '60%'],
+                                    data: res.data,
+                                    emphasis: {
+                                        itemStyle: {
+                                            shadowBlur: 10,
+                                            shadowOffsetX: 0,
+                                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                        }
+                                    }
+                                }
+                            ]
+                        });
+                    }
+
+                }
+            });
+            window.onresize = function () {
+                myChart.resize();
+            }
+            $("#drag" + num + str).resize(function () {
+                myChart.resize();
+            })
+
+            echartsTuoZhuai(str, num);
+
+    }
+
+
+    function echartsTuoZhuai(str, i) {
+//拖拽
+
+        var _move = false; //移动标记
+        var _x, _y;
+        var index_x, index_y;
+        var varName = 'drag' + i + str;//动态定义大DIV变量名
+        var varName2 = 'box2' + i + str;
+        var textName = 'result' + i + str; //动态定义大DIV变量名
+        var dragname = 'drag' + i + str;
+        $("#" + varName).bind("mousedown", downIndex); //div鼠标按下事件绑定
+        $("#" + varName).bind("mousemove", mmove); //鼠标移动事件绑定
+        $("#" + varName).bind("mouseup", mup); //鼠标弹起事件绑定
+        function mmove(e) {
+            if (_move) {
+                var x = e.pageX - _x; //移动时根据鼠标位置计算控件左上角的绝对位置
+                var y = e.pageY - _y;
+
+                $("#" + e.currentTarget.id).css({
+                    top: y,
+                    left: x,
+                    'z-index': "999"
+                }); //div新位置
+                // show(x, y, e);
+            }
+        }
+
+        function mup() {
+            _move = false;
+        }
+
+        function downIndex(e) {
+            _move = true;
+            console.log($(this))
+            _x = e.pageX - parseInt($("#" + e.currentTarget.id).css("left"));
+            _y = e.pageY - parseInt($("#" + e.currentTarget.id).css("top"));
+
+        }
+
+
+        $("#" + dragname).resize(function () {
+            if ($(this)[0].id === 'drag1') {
+                position.echartawidth = Number($(this).width());
+                position.echartaheight = Number($(this).height());
+            }
+            if ($(this)[0].id === 'drag2') {
+                position.echartbwidth = Number($(this).width());
+                position.echartbheight = Number($(this).height());
+            }
+            if ($(this)[0].id === 'drag3') {
+                position.echartcwidth = Number($(this).width());
+                position.echartcheight = Number($(this).height());
+            }
+            // localStorage.setItem($(this)[0].id + 'width', $(this).width());
+            // localStorage.setItem($(this)[0].id + 'height', $(this).height());
+
+
+        });
+
+        drag[dragname] = function () {
+            var y = 0,
+                x = 0;
+            let node = document.getElementById(varName)
+            let nodeChild = node.children[1];
+            // if (localStorage.getItem(varName + 'x') !== null && localStorage.getItem(varName + 'y') !== null) {
+            //     node.style.top = Number(localStorage.getItem(varName + 'y')) - node.offsetHeight / 2 + 'px'
+            //     node.style.left = Number(localStorage.getItem(varName + 'x')) - node.offsetWidth / 2 + 'px' //读取本地存储的位置信息给div设置位置
+            // }
+            // console.log(varName);
+            // console.log(nodeChild);
+            nodeChild.onmousedown = function (e) {
+                node.onmousemove = function (e) {
+                    y = e.clientY;
+                    x = e.clientX;
+
+
+                    node.style.top = y - node.offsetHeight / 2 + 'px'
+                    node.style.left = x - node.offsetWidth / 2 + 'px'
+                    // console.log("按下",node);
+                    document.onmouseup = function () {
+                        //更新移动位置
+
+                        console.log("松开", node);
+                        echartSaveCharts("/echarts/" + node.id.slice(5) + "?username=", node.id.slice(4, 5), node.style.top, node.style.left, node.style.width, node.style.height, node.style.display);
+                        node.onmousemove = null;
+                    }
+                }
+            }
+        }
+        eval('drag.' + dragname + '()');
+    }
+
+    function echartSaveCharts(url, num, topd, leftd, widthd, heightd, displayd) {
+        console.log("更新数据库位置", topd );
+        let fromDate = {
+            url: url,
+            type: num,
+            echartaxaxis: (topd + "").indexOf("px") != -1 ? (topd + "").split("px")[0] : (topd + ""),
+            echartayaxis: (leftd + "").indexOf("px") != -1 ? (leftd + "").split("px")[0] : (leftd + ""),
+            echartawidth: (widthd + "").indexOf("px") != -1 ? (widthd + "").split("px")[0] : (widthd + ""),
+            echartaheight: (heightd + "").indexOf("px") != -1 ? (heightd + "").split("px")[0] : (heightd + ""),
+            display: displayd,
+            username: username
+        }
+        $.ajax({
+            type: "post",
+            data: fromDate,
+            async: false,            //异步请求（同步请求将会锁住浏览器，用户其他操作必须等待请求完成才可以执行）
+            url: "/echarts/putPosition",    //请求发送到TestServlet处
+            dataType: "json",
+            success: function (res) {
+                if (res === true) console.log("图片位置保存成功")
+            }
+        });
+    }
+
+
+</script>
+</body>
+
+</html>

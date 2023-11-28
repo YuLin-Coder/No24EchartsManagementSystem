@@ -1,0 +1,488 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>系统审计</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+    <meta http-equiv="expires" content="Wed, 26 Feb 1997 08:21:57 GMT">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" href="layui/css/layui.css" media="all"/>
+    <link rel="stylesheet" href="css/list.css" media="all"/>
+    <style type="text/css">
+        .layui-form-item .layui-input-inline {
+            width: 170px !important;
+        }
+    </style>
+</head>
+<body class="childrenBody">
+
+<blockquote class="layui-elem-quote news_search">
+
+    <div>
+        <div>
+            <span>操作日志</span>
+        </div>
+    </div>
+</blockquote>
+
+<form class="layui-form">
+    <div class="layui-form-item">
+        <div class="layui-inline">
+            <label class="layui-form-label">系统模块</label>
+            <div class="layui-input-inline">
+                <input type="text" name="sysmodule" placeholder="请输入系统模块" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">用户名称</label>
+            <div class="layui-input-inline">
+                <input type="text" name="username" placeholder="请输入用户名称" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-inline">
+            <label class="layui-form-label">状态</label>
+            <div class="layui-input-inline">
+                <select name="status">
+                    <option value="">全部</option>
+                    <option value="1">成功</option>
+                    <option value="0">失败</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="layui-inline">
+            <label class="layui-form-label">操作时间</label>
+            <div class="layui-input-inline">
+                <input type="text" name="time" class="layui-input" id="test6" placeholder=" - ">
+            </div>
+        </div>
+
+        <div class="layui-inline">
+            <a class="layui-btn search_btn" lay-submit="" data-type="search" lay-filter="search">查询</a>
+        </div>
+        <div class="layui-inline">
+            <a class="layui-btn  layui-btn-danger" id="deleteAudit">删除</a>
+        </div>
+        <div class="layui-inline">
+            <a class="layui-btn layui-btn-warm" id="empty">清空</a>
+        </div>
+        <div class="layui-inline">
+            <a class="layui-btn " id="downLoadButton">导出</a>
+        </div>
+    </div>
+
+
+</form>
+<iframe src="" id="downloadFile" style="display:none"></iframe>
+<div class="layui-form">
+    <table id="userList" lay-filter="userList"></table>
+</div>
+<script type="text/javascript" src="layui/layui.js"></script>
+<script type="text/html" id="barEdit">
+    <a class="layui-btn layui-btn-xs" lay-event="info">查看</a>
+</script>
+
+<script type="text/html" id="typeTpl">
+    {{#  if(d.status === '1'){ }}
+    <span style="color: #5FB878;">成功</span>
+    {{#  } else if(d.status === '0'){ }}
+    <span style="color: #FF5722;">失败</span>
+    {{#  } }}
+</script>
+
+<script>
+    var $layer;
+    var $table;
+    var indexadd;
+    var username = 'admin';
+
+    layui.config({base: "js/"}).use(['form', 'layer', 'jquery', 'table', 'laydate', 'upload'], function () {
+        var form = layui.form,
+            table = layui.table,
+            layer = layui.layer,
+            upload = layui.upload,
+            laydate = layui.laydate,
+            $ = layui.jquery;
+        //记录选中的数据:做缓存使用,作为参数传递给后台,然后生成pdf ,压缩
+        var ids = new Array();
+        //当前表格中的全部数据:在表格的checkbox全选的时候没有得到数据, 因此用全局存放变量
+        var table_data = new Array();
+        //日期范围
+        var time1 = '';
+        var time2 = '';
+        laydate.render({
+            elem: '#test6'
+            , range: true
+            , done: function (value, date, endDate) {
+                time1 = value.split(' - ')[0];
+                time2 = value.split(' - ')[1];
+            }
+        });
+
+        //加载页面数据
+        table.render({
+            id: 'userList'
+            , elem: '#userList'
+            , url: '/audit/queryAuditnanagerList' //数据接口
+            , limit: 10//每页默认数
+            , limits: [10, 20, 30, 40]
+            , cols: [
+                [ //表头
+                    {checkbox: true},
+                    {
+                        field: 'no',
+                        title: '日志编号',
+
+                    }, {
+                    field: 'sysmodule',
+                    title: '系统模快',
+                }, {
+                    field: 'operation',
+                    title: '操作类型',
+                }, {
+                    field: 'ipaddress',
+                    title: '主机',
+                }, {
+                    field: 'location',
+                    title: '操作地点',
+                }, {
+                    field: 'username',
+                    title: '用户名称',
+                }, {
+                    field: 'requestmode',
+                    title: '请求方式',
+                }, {
+                    field: 'status',
+                    title: '操作状态',
+                    templet: '#typeTpl'
+                }, {
+                    field: 'logdate',
+                    title: '登录日期',
+                    templet: '<div>{{ formatTime(d.logdate,"yyyy-MM-dd hh:mm:ss")}}</div>'
+                }, {
+                    title: '操作',
+                    toolbar: '#barEdit',
+
+                }]
+            ]
+            , page: true  //开启分页
+            , where: {
+                sysmodule: $("input[name=sysmodule]").val(),
+                username: $("input[name=username]").val(),
+                status: $("select[name=status]").val(),
+                time1: time1,
+                time2: time2,
+                timestamp: (new Date()).valueOf(),
+            }, done: function (res, curr, count) {
+                //数据表格加载完成时调用此函数
+                //如果是异步请求数据方式，res即为你接口返回的信息。
+                //如果是直接赋值的方式，res即为：{data: [], count: 99} data为当前页数据、count为数据总长度
+
+                //设置全部数据到全局变量
+                table_data = res.data;
+            }
+        });
+
+        table.on('checkbox(userList)', function (obj) {
+            console.log(obj.checked); //当前是否选中状态
+            console.log(obj.data); //选中行的相关数据
+            console.log(obj.type); //如果触发的是全选，则为：all，如果触发的是单选，则为：one
+            if (obj.checked == true) {
+                if (obj.type == 'one') {
+                    ids.push(obj.data.id);
+                } else {
+                    for (var i = 0; i < table_data.length; i++) {
+                        ids.push(table_data[i].id);
+                    }
+                }
+            } else {
+                if (obj.type == 'one') {
+                    for (var i = 0; i < ids.length; i++) {
+                        if (ids[i] == obj.data.id) {
+                            ids.remove(i);
+                        }
+                    }
+                } else {
+                    for (var i = 0; i < ids.length; i++) {
+                        for (var j = 0; j < table_data.length; j++) {
+                            if (ids[i] == table_data[j].id) {
+                                ids.remove(i);
+                            }
+                        }
+                    }
+                }
+            }
+
+        });
+
+
+        //监听工具条
+        table.on('tool(userList)', function (obj) {
+            var data = obj.data;
+            if (obj.event === 'info') {
+                var indexOpen = layer.open({
+                    title: '查看',
+                    type: 1,
+                    area: ['800px', '500px'],
+                    offset: ['50px', '250px'],
+                    content: '<blockquote class="layui-elem-quote layui-text">注意事项: 请查看相关的数据信息! </blockquote>' +
+                        '<form class="layui-form" lay-filter="fromDataLook"> ' +
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">日志编号:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="no"  placeholder="请输入日志编号" class="layui-input" value="' + data.no + '" readonly >' +
+                        '</div></div>' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">系统模快:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="sysmodule"  placeholder="请输入系统模快" class="layui-input" value="' + data.sysmodule + '" readonly >' +
+                        '</div></div>' +
+
+                        '</div>' +
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">操作类型:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="operation"  placeholder="请输入操作类型" class="layui-input" value="' + data.operation + '" readonly >' +
+                        '</div></div>' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">主机:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="ipaddress"  placeholder="请输入主机" class="layui-input" value="' + data.ipaddress + '" readonly >' +
+                        '</div></div>' +
+                        '</div>' +
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">操作地点:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="location"  placeholder="请输入操作地点" class="layui-input" value="' + data.location + '" readonly >' +
+                        '</div></div>' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">用户名称:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="username"  placeholder="请输入用户名称" class="layui-input" value="' + data.username + '" readonly >' +
+                        '</div></div>' +
+                        '</div>' +
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">请求方式:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="requestmode"  placeholder="请输入请求方式" class="layui-input" value="' + data.requestmode + '" readonly >' +
+                        '</div></div>' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">登录状态:</label>' +
+                        '<div class="layui-input-inline">' +
+                        ' <select name="status" readonly>\n' +
+                        '                    <option value="1">成功</option>\n' +
+                        '                    <option value="0">失败</option>\n' +
+                        '                </select>' +
+                        '</div></div>' +
+                        '</div>' +
+
+
+                        '<div class="layui-form-item">' +
+                        '<div class="layui-inline">' +
+                        '<label class="layui-form-label">登录日期:</label>' +
+                        '<div class="layui-input-inline">' +
+                        '<input type="text" name="logdate" placeholder="请输入登录日期"  class="layui-input" value="' + formatTime(data.logdate, "yyyy-MM-dd hh:mm:ss") + '" readonly >' +
+                        '</div></div>' +
+                        '</div>' +
+
+                        '</form>',
+                    btnAlign: 'c',
+                    btn: ['确定', '取消'],
+                    yes: function (index, layero) {
+                        layer.msg("关闭窗口");
+                        layer.close(index);
+                        return false;
+                    }, btn2: function (index, layero) {
+                        layer.msg("取消");
+                        //return false 开启该代码可禁止点击该按钮关闭
+                    }, cancel: function () {
+                        layer.msg("关闭窗口");
+                        //右上角关闭回调
+                        //return false 开启该代码可禁止点击该按钮关闭
+                    },
+                    success: function () {
+                        layui.use('form', function () {
+                            var form = layui.form; //只有执行了这一步，部分表单元素才会修饰成功
+                            form.val("fromDataLook", { //formTest 即 class="layui-form" 所在元素属性 lay-filter="" 对应的值
+                                "status": data.status,
+                            });
+
+                            form.render('checkbox');
+                            form.render('select');
+                            form.on('checkbox(istrue)', function (data) {
+                                /* if(data.elem.checked){
+                                 emailConfig['isenterprise']=1;
+                                 }; //是否被选中，true或者false*/
+                            });
+
+                        });
+                    }
+                })
+            }
+        });
+        var active = {
+            search: function () {
+                var sysmodule = $("input[name=sysmodule]");
+                var username = $("input[name=username]");
+                var status = $("select[name=status]");
+                var time = $("input[name=time]");
+
+                console.log(time);
+                //执行重载
+                table.reload('userList', {
+                    page: {
+                        curr: 1 //重新从第 1 页开始
+                    }
+                    , where: {
+                        sysmodule: sysmodule.val(),
+                        username: username.val(),
+                        status: status.val(),
+                        time1: time1,
+                        time2: time2,
+                        _t: new Date().getTime()
+                    }
+                });
+            }
+        };
+        //查询
+        $(".search_btn").click(function () {
+            var type = $(this).data('type');
+            active[type] ? active[type].call(this) : '';
+        })
+
+        $("#downLoadButton").click(function () {
+
+
+            var sysmodule = $("input[name=sysmodule]").val();
+            var username = $("input[name=username]").val();
+            var status = $("select[name=status]").val();
+
+            var url = "/audit/updateEchartsUrlList?" +
+                "sysmodule=" + sysmodule +
+                "&username=" + username +
+                "&status=" + status +
+                "&time1=" + time1 +
+                "&time2=" + time2;
+            console.log("下载", url)
+            $("#downloadFile").attr("src", url);
+        })
+        $("#empty").click(function () {
+             $("input[name=sysmodule]").val("");
+             $("input[name=username]").val("");
+            $("select[name=status]").val("");
+            $("input[name=time]").val("");
+            form.render('select');
+        })
+
+
+        $("#deleteAudit").click(function () {
+            console.log(ids);
+            if(ids==null || ids.length==0 ){
+                alert("请勾选");
+                return;
+            }
+            layer.confirm('真的删除选中数据吗?', function (index) {
+                $.ajax({
+                    async: false,
+                    url: '/audit/deleteAuditnanager',
+                    type: "get",
+                    data: {
+                        id: ids.join(",")
+                    },
+                    success: function (d) {
+                        window.location.reload();
+                    }
+                })
+                layer.close(index);
+            });
+        })
+
+
+        $table = table;
+        $layer = layer;
+
+    })
+
+
+    //添加后刷新表格
+    function uploadTable() {
+        $layer.close(indexadd);
+        //执行重载
+        $table.reload('userList', {
+            page: {
+                curr: 1
+                //重新从第 1 页开始
+            },
+            where: {
+                _t: new Date().getTime(),
+                category: 'A'
+            }
+        });
+    }
+
+
+    //格式化时间
+    function formatTime(datetime, fmt) {
+        if (datetime == null || datetime == 0) {
+            return "";
+        }
+        if (parseInt(datetime) == datetime) {
+            if (datetime.length == 10) {
+                datetime = parseInt(datetime) * 1000;
+            } else if (datetime.length == 13) {
+                datetime = parseInt(datetime);
+            }
+        }
+        datetime = new Date(datetime);
+        var o = {
+            "M+": datetime.getMonth() + 1, //月份
+            "d+": datetime.getDate(), //日
+            "h+": datetime.getHours(), //小时
+            "m+": datetime.getMinutes(), //分
+            "s+": datetime.getSeconds(), //秒
+            "q+": Math.floor((datetime.getMonth() + 3) / 3), //季度
+            "S": datetime.getMilliseconds()
+            //毫秒
+        };
+        if (/(y+)/.test(fmt))
+            fmt = fmt.replace(RegExp.$1, (datetime.getFullYear() + "")
+                .substr(4 - RegExp.$1.length));
+        for (var k in o)
+            if (new RegExp("(" + k + ")").test(fmt))
+                fmt = fmt.replace(RegExp.$1,
+                    (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k])
+                        .substr(("" + o[k]).length)));
+        return fmt;
+    }
+
+    //删除数组自定义函数
+    Array.prototype.remove = function (dx) {
+        if (isNaN(dx) || dx > this.length) {
+            return false;
+        }
+        for (var i = 0, n = 0; i < this.length; i++) {
+            if (this[i] != this[dx]) {
+                this[n++] = this[i]
+            }
+        }
+        this.length -= 1
+    }
+
+</script>
+</body>
+</html>
